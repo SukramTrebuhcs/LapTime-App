@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>🏁 Strecken- und Rundenzeitemprognose auf Basis des TrackCodes 🏎️</title>
+<style>
+  :root{--bg:#f4f5f7;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--dark:#111827;--accent:#2563eb;--good:#16a34a;--bad:#dc2626;--warn:#f59e0b;--soft:#fafafa;}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text)}
+  .wrap{max-width:1220px;margin:28px auto;padding:24px;background:var(--card);border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.08)}
+  h1{margin:0 0 8px;font-size:32px} h2{font-size:20px;margin:28px 0 10px} p{color:var(--muted);font-size:17px;line-height:1.35}.label{font-weight:700;margin-top:22px;margin-bottom:8px}
+  input{width:100%;font-size:22px;padding:16px 18px;border:2px solid #cbd5e1;border-radius:14px;outline:none;text-transform:none} input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(37,99,235,.15)}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:24px 0}.card{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--soft)}.k{font-size:14px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800}.v{font-size:28px;font-weight:900;margin-top:12px}.small{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.35}
+  table{width:100%;border-collapse:collapse;margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden} thead{background:var(--dark);color:white} th,td{padding:13px 12px;border-bottom:1px solid var(--line);text-align:left} th{font-size:13px;text-transform:uppercase;letter-spacing:.07em} td{font-size:15px}.highlight{font-size:20px;font-weight:900;color:var(--accent)}
+  .pillrow{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 20px}.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:800}.pill span{font-size:13px;color:#4f46e5}.pill b{font-size:16px;color:#111827}.ok{color:var(--good);font-weight:900}.bad{color:var(--bad);font-weight:900}.note{background:#fff7ed;border:1px solid #fed7aa;padding:12px 14px;border-radius:12px;color:#7c2d12;margin-top:16px;line-height:1.45}.footer{margin-top:22px;color:var(--muted);font-size:14px;line-height:1.45}.bar{height:22px;border-radius:999px;background:linear-gradient(90deg,#111827,#2563eb);margin-top:20px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.muted{color:var(--muted)}
+
+  .vizgrid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin:18px 0 6px}.vizcard{border:1px solid var(--line);border-radius:14px;background:var(--soft);padding:16px}.viztitle{font-weight:900;margin-bottom:12px}.barrow{display:grid;grid-template-columns:190px 1fr 90px;gap:10px;align-items:center;margin:10px 0}.barlabel{font-weight:800}.bartrack{height:18px;background:#e5e7eb;border-radius:999px;overflow:hidden}.barfill{height:100%;background:var(--accent);border-radius:999px}.barfill.best{background:var(--good)}.barvalue{text-align:right;font-weight:900}.stackbar{display:flex;height:28px;border-radius:999px;overflow:hidden;background:#e5e7eb;margin:12px 0}.seg{height:100%;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:900;min-width:28px}.seg-straight{background:#2563eb}.seg-curve{background:#f59e0b}.seg-hairpin{background:#dc2626}.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.legend span{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}.impactbar{display:grid;grid-template-columns:160px 1fr 70px;gap:10px;align-items:center;margin:9px 0}.impactfill{height:14px;border-radius:999px;background:var(--warn)}.impactfill.neg{background:#60a5fa}.impactNote{font-size:13px;color:var(--muted);margin-top:8px}
+
+
+  .drivegrid{display:grid;grid-template-columns:1fr;gap:18px;margin:18px 0}.timeline{display:flex;flex-wrap:wrap;gap:10px;padding:8px 2px 6px}.zone{flex:1 1 160px;min-width:150px;border:1px solid var(--line);border-radius:14px;padding:10px;background:white}.zone .pos{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase}.zone .part{font-size:24px;font-weight:950;margin:4px 0}.zone .act{font-size:13px;font-weight:900}.zone .tip{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.25}.zone.brake{border-color:#fecaca;background:#fff1f2}.zone.hardbrake{border-color:#fca5a5;background:#fee2e2}.zone.boost{border-color:#bbf7d0;background:#f0fdf4}.zone.maxboost{border-color:#86efac;background:#dcfce7}.zone.flow{border-color:#fde68a;background:#fffbeb}.zone.lift{border-color:#bfdbfe;background:#eff6ff}.zone.start{border-color:#c7d2fe;background:#eef2ff}.driveLegend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.driveLegend span{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}.square{width:12px;height:12px;border-radius:4px;display:inline-block}.recommendTable td:first-child{font-weight:900}.recommendTable .tag{font-weight:900;border-radius:999px;padding:4px 8px;display:inline-block}.tag.brake{background:#fee2e2;color:#991b1b}.tag.boost{background:#dcfce7;color:#166534}.tag.flow{background:#fef3c7;color:#92400e}.tag.lift{background:#dbeafe;color:#1e40af}.tag.start{background:#e0e7ff;color:#3730a3}
+
+  @media(max-width:900px){.cards{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr} th,td{font-size:13px;padding:10px 8px}.wrap{margin:12px;padding:16px} h1{font-size:26px}}
+  @media(max-width:900px){.vizgrid{grid-template-columns:1fr}.barrow{grid-template-columns:130px 1fr 70px}.impactbar{grid-template-columns:130px 1fr 60px}}
+  @media(max-width:620px){.cards{grid-template-columns:1fr} table{display:block;overflow-x:auto;white-space:nowrap}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏁 Strecken- und Rundenzeitemprognose auf Basis des TrackCodes 🏎️</h1>
+  <p>Berechnet Streckenlänge, Streckendetails, Kurvenwirkung und eine kalibrierte Rundenzeiten-Prognose. <br/>Die Geometrie nutzt jetzt das aktuelle TrackCode-Format mit Teilen a–l.</p>
+
+  <div class="label">TrackCode</div>
+  <input id="code" value="de4dbdbd2cdfcda" autocapitalize="none" autocomplete="off" spellcheck="false" />
+
+  <div class="cards">
+    <div class="card"><div class="k">Status</div><div id="status" class="v">–</div><div id="statusSmall" class="small"></div></div>
+    <div class="card"><div class="k">Carrera-Hybrid-Länge</div><div id="modelLen" class="v">–</div><div class="small">1:50 / echte Bahn</div></div>
+    <div class="card"><div class="k">Länge in Realität</div><div id="gameLen" class="v">–</div><div class="small">Maßstab 1:1 aus 1:50</div></div>
+  </div>
+
+
+      <div>
+      <h2>Streckendetails</h2>
+      <div class="pillrow" id="modulePills"></div>
+    </div>
+
+
+  <h2>Fahrzeug-Prognose</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Auto</th><th>Hybrid-Prognose</th><th>1:50 theoretisch</th><th>Technikindex</th><th>Fahrzeugfaktor</th>
+      </tr>
+    </thead>
+    <tbody id="carRows"><tr><td colspan="5">Berechnung wird geladen…</td></tr></tbody>
+  </table>
+
+  <div class="vizgrid">
+    <div class="vizcard">
+      <div class="viztitle">📊 Hybrid-Prognose im Vergleich</div>
+      <div id="carBars"></div>
+      <div class="impactNote">Kürzerer Balken = schneller. Schnellstes Auto wird grün markiert.</div>
+    </div>
+    <div class="vizcard">
+      <div class="viztitle">🧩 Streckenmix</div>
+      <div id="mixBar" class="stackbar"></div>
+      <div id="mixLegend" class="legend"></div>
+    </div>
+  </div>
+
+  <div class="vizcard">
+    <div class="viztitle">⏱️ Zeitwirkung der Streckenteile</div>
+    <div id="impactBars"></div>
+  </div>
+
+  <div class="drivegrid">
+    <div class="vizcard">
+      <div class="viztitle">🎯 Brems- und Boostpunkte</div>
+      <div id="driveTimeline" class="timeline"></div>
+      <div class="driveLegend">
+        <span><i class="square" style="background:#fee2e2"></i>Bremsen</span>
+        <span><i class="square" style="background:#dcfce7"></i>Boost</span>
+        <span><i class="square" style="background:#fffbeb;border:1px solid #fde68a"></i>Fluss/Teilgas</span>
+        <span><i class="square" style="background:#eff6ff;border:1px solid #bfdbfe"></i>Lupfen/Stabilisieren</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>Kurvenwirkung auf die Zeit</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Einfluss</th><th>Anzahl / Anteil</th><th>Faktoranteil</th><th>Wirkung auf 1:50-Basiszeit</th>
+      </tr>
+    </thead>
+    <tbody id="impactRows"><tr><td colspan="4">Berechnung wird geladen…</td></tr></tbody>
+  </table>
+
+  <div class="grid2">
+    <div>
+      <h2>Teile-Breakdown</h2>
+      <table>
+        <thead><tr><th>Teil</th><th>Anzahl</th><th>Länge 1:50</th><th>Länge in Realität</th></tr></thead>
+        <tbody id="breakdownRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+  'use strict';
+
+  const SCALE = 50;
+  const TRACK_HALF_WIDTH_CM = 12.5;
+  const TIME_DIVISOR = 2.575; // kalibriert auf de4dbdbd2cdfcda mit aktueller Geometrie
+
+  const parts = {
+    a:{type:'line', lengthCm:43.2, group:'start', label:'Start/Ziel', short:'a', halfWidthCm:TRACK_HALF_WIDTH_CM, event:'start'},
+    b:{type:'line', lengthCm:43.2, group:'straight', label:'Gerade', short:'b', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    c:{type:'curve60', radiusCm:37.5, angle:60, dir:-1, group:'curve', label:'60° Linkskurve', short:'c', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    d:{type:'curve60', radiusCm:37.5, angle:60, dir:1, group:'curve', label:'60° Rechtskurve', short:'d', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    e:{type:'hairpin', preLengthCm:21.7, radiusCm:18.75, angle:180, dir:-1, group:'hairpin', label:'Haarnadel links', short:'e', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    f:{type:'hairpin', preLengthCm:21.7, radiusCm:18.75, angle:180, dir:1, group:'hairpin', label:'Haarnadel rechts', short:'f', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    g:{type:'line', lengthCm:86.4, group:'pit', label:'Pitlane-Gerade', short:'g', halfWidthCm:TRACK_HALF_WIDTH_CM, event:'pit'},
+    h:{type:'curve30large', radiusCm:112.43, angle:30, dir:-1, group:'curveLarge', label:'30° große Linkskurve', short:'h', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    i:{type:'curve30large', radiusCm:112.43, angle:30, dir:1, group:'curveLarge', label:'30° große Rechtskurve', short:'i', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    j:{type:'line', lengthCm:43.2, group:'narrow', label:'Engstelle / schmale Gerade', short:'j', halfWidthCm:TRACK_HALF_WIDTH_CM, event:'narrow'},
+    k:{type:'curve30small', radiusCm:37.5, angle:30, dir:-1, group:'curveSmall', label:'30° kleine Linkskurve', short:'k', halfWidthCm:TRACK_HALF_WIDTH_CM},
+    l:{type:'curve30small', radiusCm:37.5, angle:30, dir:1, group:'curveSmall', label:'30° kleine Rechtskurve', short:'l', halfWidthCm:TRACK_HALF_WIDTH_CM}
+  };
+
+  const cars = [
+    {name:'BMW M4 GT3', factor:2.218, calibration:'8,565 s Referenz'},
+    {name:'Ford Mustang GT3 / GR3', factor:2.266, calibration:'8,750 s Referenz'},
+    {name:'Porsche 911 GT3 R', factor:2.305, calibration:'8,900 s Referenz'}
+  ];
+
+  function parseCode(raw){
+    const code = String(raw || '').trim().toLowerCase();
+    if(!code) return {ok:false, error:'Code ist leer.', tokens:[]};
+
+    let i=0, tokens=[];
+    let aCount = 0;
+    let gCount = 0;
+
+    while(i<code.length){
+      let n='';
+      while(i<code.length && code[i]>='0' && code[i]<='9'){
+        n += code[i++];
+      }
+
+      // Der Low-Level-Tokenizer wäre permissiv; im UI behandeln wir trailing digits als unvollständig.
+      if(i>=code.length) return {ok:false,error:'Zahl ohne Streckenteil am Ende.',tokens:[]};
+
+      const ch = code[i++];
+      if(!parts[ch]) return {ok:false,error:'Unbekanntes Streckenteil: '+ch,tokens:[]};
+
+      const count = n ? parseInt(n,10) : 1;
+      if(!Number.isFinite(count) || count < 1 || count > 999) return {ok:false,error:'Ungültiger Faktor bei '+ch+'.',tokens:[]};
+
+      if(ch === 'a') aCount += count;
+      if(ch === 'g') gCount += count;
+
+      tokens.push({ch,count});
+    }
+
+    if(aCount !== 1) return {ok:false,error:'TrackCode muss genau ein Start/Ziel a enthalten.',tokens};
+    if(gCount > 1) return {ok:false,error:'Pitlane g darf höchstens einmal vorkommen.',tokens};
+
+    return {ok:true,error:'',tokens};
+  }
+
+  function arcLenCm(radiusCm, angleDeg){ return radiusCm * (angleDeg * Math.PI / 180); }
+  function partLengthCm(p){
+    if(p.type === 'line') return p.lengthCm;
+    if(p.type === 'hairpin') return (p.preLengthCm || 0) + arcLenCm(p.radiusCm, p.angle);
+    if(p.radiusCm && p.angle) return arcLenCm(p.radiusCm, p.angle);
+    return 0;
+  }
+
+  function addAreaPoint(points, x, y, halfWidthCm){ points.push({x,y,halfWidthCm}); }
+
+  function computeBounds(points){
+    let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+    points.forEach(p=>{
+      minX = Math.min(minX, p.x - p.halfWidthCm);
+      maxX = Math.max(maxX, p.x + p.halfWidthCm);
+      minY = Math.min(minY, p.y - p.halfWidthCm);
+      maxY = Math.max(maxY, p.y + p.halfWidthCm);
+    });
+    return {widthCm:maxX-minX, depthCm:maxY-minY, areaM2:((maxX-minX)/100)*((maxY-minY)/100)};
+  }
+
+  function rotatePoint(x,y,a){
+    const ca=Math.cos(a), sa=Math.sin(a);
+    return {x:x*ca-y*sa, y:x*sa+y*ca};
+  }
+
+  function computeOptimizedBounds(points){
+    if(!points.length) return {widthCm:0,depthCm:0,areaM2:0,angleDeg:0};
+    let best=null;
+    for(let deg=0; deg<180; deg+=1){
+      const a=deg*Math.PI/180;
+      const rotated = points.map(p=>{
+        const r=rotatePoint(p.x,p.y,a);
+        return {x:r.x,y:r.y,halfWidthCm:p.halfWidthCm};
+      });
+      const b=computeBounds(rotated);
+      if(!best || b.areaM2<best.areaM2) best={...b,angleDeg:deg};
+    }
+    return best;
+  }
+
+  function buildAreaPoints(tokens){
+    let x=0, y=0, th=0;
+    const points=[];
+    addAreaPoint(points,x,y,TRACK_HALF_WIDTH_CM);
+
+    function addLine(lengthCm, halfWidthCm){
+      x += lengthCm * Math.cos(th);
+      y += lengthCm * Math.sin(th);
+      addAreaPoint(points,x,y,halfWidthCm);
+    }
+
+    function addCurve(p){
+      const R = p.radiusCm;
+      const dir = p.dir || 1;
+      const ang = (p.angle || 60) * Math.PI/180 * dir;
+      const steps = Math.max(20, Math.ceil(Math.abs((p.angle || 60))/3));
+      const startX=x, startY=y, startTh=th;
+      for(let s=1;s<=steps;s++){
+        const dt=ang*s/steps;
+        const px=startX + R*(Math.sin(startTh+dt)-Math.sin(startTh));
+        const py=startY + R*(-Math.cos(startTh+dt)+Math.cos(startTh));
+        addAreaPoint(points,px,py,p.halfWidthCm);
+      }
+      x = startX + R*(Math.sin(startTh+ang)-Math.sin(startTh));
+      y = startY + R*(-Math.cos(startTh+ang)+Math.cos(startTh));
+      th += ang;
+      addAreaPoint(points,x,y,p.halfWidthCm);
+    }
+
+    tokens.forEach(t=>{
+      for(let k=0;k<t.count;k++){
+        const p=parts[t.ch];
+        if(p.type === 'line'){
+          addLine(p.lengthCm, p.halfWidthCm);
+        } else {
+          if(p.preLengthCm) addLine(p.preLengthCm, p.halfWidthCm);
+          addCurve(p);
+        }
+      }
+    });
+
+    return {current:computeBounds(points), optimized:computeOptimizedBounds(points)};
+  }
+
+  function analyse(tokens){
+    let lenCm=0, straights=0, start=0, pit=0, narrow=0, curves60=0, curves30Large=0, curves30Small=0, hairpins=0, modules=0;
+    const byKey = {};
+    tokens.forEach(t=>{
+      const p=parts[t.ch];
+      const single = partLengthCm(p);
+      const total = single * t.count;
+      lenCm += total; modules += t.count;
+      byKey[t.ch] = (byKey[t.ch] || {count:0,lenCm:0});
+      byKey[t.ch].count += t.count; byKey[t.ch].lenCm += total;
+      if(p.type === 'line'){
+        if(p.group === 'start') start += t.count;
+        else if(p.group === 'pit') pit += t.count;
+        else if(p.group === 'narrow') narrow += t.count;
+        else straights += t.count;
+      } else if(p.type === 'hairpin'){
+        hairpins += t.count;
+      } else if(p.angle === 60){
+        curves60 += t.count;
+      } else if(p.group === 'curveLarge'){
+        curves30Large += t.count;
+      } else if(p.group === 'curveSmall'){
+        curves30Small += t.count;
+      }
+    });
+
+    const modelM = lenCm / 100;
+    const gameM = modelM * SCALE;
+    const straightModules = straights + start + pit + narrow;
+    const curveModules = curves60 + curves30Large + curves30Small + hairpins;
+    const curveRatio = modules ? curveModules / modules : 0;
+    const straightRatio = modules ? straightModules / modules : 0;
+
+    const curve60Part = 0.015 * curves60;
+    const large30Part = 0.008 * curves30Large;
+    const small30Part = 0.010 * curves30Small;
+    const hairpinPart = 0.10 * hairpins;
+    const straightPart = -0.025 * (straights + start + pit);
+    const narrowPart = 0.035 * narrow;
+    const rawTechMalus = 1 + curve60Part + large30Part + small30Part + hairpinPart + straightPart + narrowPart;
+    const techMalus = Math.max(0.95, rawTechMalus);
+    const theoretical150 = modelM / TIME_DIVISOR;
+    const area = buildAreaPoints(tokens);
+
+    return {lenCm,modelM,gameM,straights,start,pit,narrow,curves60,curves30Large,curves30Small,hairpins,modules,curveModules,straightModules,curveRatio,straightRatio,techMalus,theoretical150,byKey,area,curve60Part,large30Part,small30Part,hairpinPart,straightPart,narrowPart};
+  }
+
+  function fmt(n,d=2){ return Number.isFinite(n) ? n.toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d}) : '–'; }
+  function pct(n,d=1){ return Number.isFinite(n) ? (n*100).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d})+'%' : '–'; }
+
+  function reset(msg){
+    document.getElementById('status').innerHTML = '<span class="bad">Ungültig</span>';
+    document.getElementById('statusSmall').textContent = msg;
+    document.getElementById('modelLen').textContent = '–';
+    document.getElementById('gameLen').textContent = '–';
+    document.getElementById('carRows').innerHTML = '<tr><td colspan="5">Gib einen gültigen TrackCode ein.</td></tr>';
+    document.getElementById('impactRows').innerHTML = '<tr><td colspan="4">Gib einen gültigen TrackCode ein.</td></tr>';
+    document.getElementById('carBars').innerHTML = '';
+    document.getElementById('mixBar').innerHTML = '';
+    document.getElementById('mixLegend').innerHTML = '';
+    document.getElementById('impactBars').innerHTML = '';
+    document.getElementById('driveTimeline').innerHTML = '';
+    const driveRows = document.getElementById('driveRows');
+    if(driveRows) driveRows.innerHTML = '<tr><td colspan="4">Gib einen gültigen TrackCode ein.</td></tr>';
+    const detailRows = document.getElementById('detailRows');
+    if(detailRows) detailRows.innerHTML = '';
+    document.getElementById('breakdownRows').innerHTML = '';
+    document.getElementById('modulePills').innerHTML = '';
+  }
+
+
+
+  function expandTokens(tokens){
+    const expanded=[];
+    tokens.forEach(t=>{
+      for(let i=0;i<t.count;i++) expanded.push(t.ch);
+    });
+    return expanded;
+  }
+
+  function reorderFromStartFinish(tokens){
+    const expanded = expandTokens(tokens);
+    const startIndex = expanded.indexOf('a');
+    if(startIndex < 0) return expanded;
+    return expanded.slice(startIndex).concat(expanded.slice(0,startIndex));
+  }
+
+  function groupLabel(g){ return g.ch; }
+
+  function zoneForTile(seq, index){
+    const ch = seq[index];
+    const prev = seq[(index-1+seq.length)%seq.length];
+    const next = seq[(index+1)%seq.length];
+    const p = parts[ch];
+
+    if(ch === 'a') return {cls:'start', action:'Start / Ziel', tag:'start', tip:'Ab hier lesen. Ausgang sauber aufbauen.'};
+    if(ch === 'g') return {cls:'boost', action:'Pitlane / kontrolliert schnell', tag:'boost', tip:'Nur boosten, wenn Einfahrt/Ausfahrt frei und stabil ist.'};
+    if(ch === 'j') return {cls:'lift', action:'Engstelle: lupfen', tag:'lift', tip:'Nicht überfahren. Auto stabil und mittig halten.'};
+    if(p.type === 'hairpin') return {cls:'hardbrake', action:'Harte Bremszone', tag:'brake', tip:'Früh bremsen, spät einlenken, Ausgang priorisieren.'};
+    if(next && parts[next]?.type === 'hairpin') return {cls:'brake', action:'Bremsen vorbereiten', tag:'brake', tip:'Kein Boost. Vor der Haarnadel Tempo rausnehmen.'};
+    if(prev && parts[prev]?.type === 'hairpin') return {cls:'maxboost', action:'Max Boost am Ausgang', tag:'boost', tip:'Direkt nach der Haarnadel. Erst gerade stellen, dann öffnen.'};
+
+    if(p.type === 'line') {
+      const prevSameLine = prev === ch && (ch === 'b' || ch === 'g');
+      const nextSameLine = next === ch && (ch === 'b' || ch === 'g');
+      const nextIsHard = next && (parts[next]?.type === 'hairpin' || parts[next]?.group === 'curveSmall');
+      if(!prevSameLine) return {cls:'boost', action:'Boost am Anfang', tag:'boost', tip: nextSameLine ? 'Lange Gerade beginnt hier. Früh boosten, danach halten.' : 'Kurzer Boost, nächsten Abschnitt vorbereiten.'};
+      if(nextIsHard && !nextSameLine) return {cls:'brake', action:'Bremspunkt vorbereiten', tag:'brake', tip:'Gerade endet vor harter Kurve. Boost rausnehmen.'};
+      return {cls:'flow', action:'Vollgas halten', tag:'flow', tip:'Boost nicht neu setzen. Linie halten.'};
+    }
+
+    if(p.group === 'curveSmall') return {cls:'lift', action:'Lupfen / stabilisieren', tag:'lift', tip:'Kleine 30°-Kurve: sauber setzen, nicht reißen.'};
+    if(p.group === 'curveLarge') return {cls:'flow', action:'Flüssig durchziehen', tag:'flow', tip:'Großer Radius. Möglichst wenig Lenk-Korrektur.'};
+    if(p.angle === 60){
+      if(prev && parts[prev]?.angle === 60 && next && parts[next]?.angle === 60){
+        return {cls:'flow', action:'Teilgas / Fluss', tag:'flow', tip:'Kurvenkette: gleichmäßig fahren, Drift vermeiden.'};
+      }
+      if(next && parts[next]?.angle) return {cls:'lift', action:'Lupfen / stabilisieren', tag:'lift', tip:'Auto setzen lassen, dann sanft öffnen.'};
+      return {cls:'flow', action:'Kurvenfluss', tag:'flow', tip:'Rund fahren, keine harten Korrekturen.'};
+    }
+    return {cls:'flow', action:'Fahrfluss', tag:'flow', tip:'Sauber halten.'};
+  }
+
+  function renderDrivingPlan(tokens){
+    const seq = reorderFromStartFinish(tokens);
+    const timeline = document.getElementById('driveTimeline');
+
+    timeline.innerHTML = seq.map((ch,i)=>{
+      const z = zoneForTile(seq,i);
+      const isImportant = z.tag === 'brake' || z.tag === 'boost' || z.tag === 'start';
+      return '<div class="zone '+z.cls+'">'+
+        '<div class="pos">#'+(i+1)+(isImportant ? ' · wichtig' : '')+'</div>'+ 
+        '<div class="part">'+ch+'</div>'+ 
+        '<div class="act">'+z.action+'</div>'+ 
+        '<div class="tip">'+z.tip+'</div>'+ 
+      '</div>';
+    }).join('');
+  }
+
+  function update(){
+    const input = document.getElementById('code');
+    input.value = input.value.trim().toLowerCase();
+    const parsed = parseCode(input.value);
+    if(!parsed.ok){ reset(parsed.error); return; }
+    const a = analyse(parsed.tokens);
+    renderDrivingPlan(parsed.tokens);
+    document.getElementById('status').innerHTML = '<span class="ok">OK</span>';
+    document.getElementById('statusSmall').textContent = a.modules+' Module · '+a.curves60+'× 60° · '+(a.curves30Large+a.curves30Small)+'× 30° · '+a.hairpins+'× Haarnadel · '+a.straightModules+'× Gerade/Start/Pit/Engstelle';
+    document.getElementById('modelLen').textContent = fmt(a.modelM,2)+' m';
+    document.getElementById('gameLen').textContent = fmt(a.gameM,0)+' m';
+
+    document.getElementById('carRows').innerHTML = cars.map(c=>{
+      const hybrid = a.theoretical150 * a.techMalus * c.factor;
+      return '<tr>'+ 
+        '<td><strong>'+c.name+'</strong></td>'+ 
+        '<td class="highlight">'+fmt(hybrid,3)+' s</td>'+ 
+        '<td>'+fmt(a.theoretical150,2)+' s</td>'+ 
+        '<td>×'+fmt(a.techMalus,2)+'</td>'+ 
+        '<td>×'+fmt(c.factor,3)+'</td>'+ 
+
+      '</tr>';
+    }).join('');
+
+    const carResults = cars.map(c=>({name:c.name, hybrid:a.theoretical150*a.techMalus*c.factor}));
+    const fastest = Math.min(...carResults.map(c=>c.hybrid));
+    const slowest = Math.max(...carResults.map(c=>c.hybrid));
+    document.getElementById('carBars').innerHTML = carResults.map(c=>{
+      const width = slowest > 0 ? Math.max(8, (c.hybrid/slowest)*100) : 0;
+      const isBest = Math.abs(c.hybrid-fastest) < 0.0001;
+      return '<div class="barrow">'+
+        '<div class="barlabel">'+c.name+'</div>'+
+        '<div class="bartrack"><div class="barfill '+(isBest?'best':'')+'" style="width:'+width+'%"></div></div>'+
+        '<div class="barvalue">'+fmt(c.hybrid,3)+' s</div>'+
+      '</div>';
+    }).join('');
+
+    const straightCount = a.straightModules;
+    const curveCount = a.curves60 + a.curves30Large + a.curves30Small;
+    const hairpinCount = a.hairpins;
+    const totalMix = Math.max(1, straightCount + curveCount + hairpinCount);
+    const straightPct = straightCount / totalMix * 100;
+    const curvePct = curveCount / totalMix * 100;
+    const hairpinPct = hairpinCount / totalMix * 100;
+    document.getElementById('mixBar').innerHTML =
+      '<div class="seg seg-straight" style="width:'+straightPct+'%">'+straightCount+'</div>'+ 
+      '<div class="seg seg-curve" style="width:'+curvePct+'%">'+curveCount+'</div>'+ 
+      '<div class="seg seg-hairpin" style="width:'+hairpinPct+'%">'+hairpinCount+'</div>';
+    document.getElementById('mixLegend').innerHTML =
+      '<span><i class="dot" style="background:#2563eb"></i>Geraden/Start/Pit/Engstelle '+pct(straightCount/totalMix,0)+'</span>'+ 
+      '<span><i class="dot" style="background:#f59e0b"></i>Kurven 30°/60° '+pct(curveCount/totalMix,0)+'</span>'+ 
+      '<span><i class="dot" style="background:#dc2626"></i>Haarnadeln '+pct(hairpinCount/totalMix,0)+'</span>';
+
+
+    const curveFactorPart = a.curve60Part + a.large30Part + a.small30Part;
+    const hairpinFactorPart = a.hairpinPart;
+    const straightFactorPart = a.straightPart;
+    const narrowFactorPart = a.narrowPart;
+    const rawTech = 1 + curveFactorPart + hairpinFactorPart + straightFactorPart + narrowFactorPart;
+    const clampedNote = rawTech < 0.95 ? ' · auf Minimum 0,95 begrenzt' : '';
+    const curveSec = a.theoretical150 * curveFactorPart;
+    const hairpinSec = a.theoretical150 * hairpinFactorPart;
+    const straightSec = a.theoretical150 * straightFactorPart;
+    const narrowSec = a.theoretical150 * narrowFactorPart;
+    const techSec = a.theoretical150 * (a.techMalus - 1);
+
+    document.getElementById('impactRows').innerHTML = [
+      ['60°-Kurven', a.curves60+' Stück', '+'+fmt(a.curve60Part*100,1)+' %', '+'+fmt(a.theoretical150*a.curve60Part,2)+' s'],
+      ['30° große Kurven', a.curves30Large+' Stück', '+'+fmt(a.large30Part*100,1)+' %', '+'+fmt(a.theoretical150*a.large30Part,2)+' s'],
+      ['30° kleine Kurven', a.curves30Small+' Stück', '+'+fmt(a.small30Part*100,1)+' %', '+'+fmt(a.theoretical150*a.small30Part,2)+' s'],
+      ['Haarnadeln', a.hairpins+' Stück', '+'+fmt(hairpinFactorPart*100,1)+' %', '+'+fmt(hairpinSec,2)+' s'],
+      ['Geraden/Start/Pit', (a.straights+a.start+a.pit)+' Stück', fmt(straightFactorPart*100,1)+' %', fmt(straightSec,2)+' s'],
+      ['Engstelle', a.narrow+' Stück', '+'+fmt(narrowFactorPart*100,1)+' %', '+'+fmt(narrowSec,2)+' s'],
+      ['Gesamt-Technikindex', pct(a.curveRatio,1)+' Kurvenanteil', '×'+fmt(a.techMalus,2)+clampedNote, (techSec>=0?'+':'')+fmt(techSec,2)+' s']
+    ].map(r=>'<tr><td><strong>'+r[0]+'</strong></td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('');
+
+    const impactMax = Math.max(Math.abs(curveSec), Math.abs(hairpinSec), Math.abs(straightSec), Math.abs(narrowSec), 0.01);
+    document.getElementById('impactBars').innerHTML = [
+      ['Kurven gesamt', curveSec],
+      ['Haarnadeln', hairpinSec],
+      ['Geraden/Start/Pit', straightSec],
+      ['Engstelle', narrowSec]
+    ].map(row=>{
+      const label=row[0], sec=row[1];
+      const width=Math.max(3, Math.abs(sec)/impactMax*100);
+      return '<div class="impactbar">'+
+        '<div class="barlabel">'+label+'</div>'+ 
+        '<div class="bartrack"><div class="impactfill '+(sec<0?'neg':'')+'" style="width:'+width+'%"></div></div>'+ 
+        '<div class="barvalue">'+(sec>=0?'+':'')+fmt(sec,2)+' s</div>'+ 
+      '</div>';
+    }).join('') + '<div class="impactNote">Positive Werte machen die Prognose langsamer, negative Werte geben Zeit zurück.</div>';
+
+
+    document.getElementById('modulePills').innerHTML = '';
+  }
+
+
+
+  function expandTokens(tokens){
+    const expanded=[];
+    tokens.forEach(t=>{
+      for(let i=0;i<t.count;i++) expanded.push(t.ch);
+    });
+    return expanded;
+  }
+
+  function reorderFromStartFinish(tokens){
+    const expanded = expandTokens(tokens);
+    const startIndex = expanded.indexOf('a');
+    if(startIndex < 0) return expanded;
+    return expanded.slice(startIndex).concat(expanded.slice(0,startIndex));
+  }
+
+  function groupLabel(g){ return g.ch; }
+
+  function zoneForTile(seq, index){
+    const ch = seq[index];
+    const prev = seq[(index-1+seq.length)%seq.length];
+    const next = seq[(index+1)%seq.length];
+    const p = parts[ch];
+
+    if(ch === 'a') return {cls:'start', action:'Start / Ziel', tag:'start', tip:'Ab hier lesen. Ausgang sauber aufbauen.'};
+    if(ch === 'g') return {cls:'boost', action:'Pitlane / kontrolliert schnell', tag:'boost', tip:'Nur boosten, wenn Einfahrt/Ausfahrt frei und stabil ist.'};
+    if(ch === 'j') return {cls:'lift', action:'Engstelle: lupfen', tag:'lift', tip:'Nicht überfahren. Auto stabil und mittig halten.'};
+    if(p.type === 'hairpin') return {cls:'hardbrake', action:'Harte Bremszone', tag:'brake', tip:'Früh bremsen, spät einlenken, Ausgang priorisieren.'};
+    if(next && parts[next]?.type === 'hairpin') return {cls:'brake', action:'Bremsen vorbereiten', tag:'brake', tip:'Kein Boost. Vor der Haarnadel Tempo rausnehmen.'};
+    if(prev && parts[prev]?.type === 'hairpin') return {cls:'maxboost', action:'Max Boost am Ausgang', tag:'boost', tip:'Direkt nach der Haarnadel. Erst gerade stellen, dann öffnen.'};
+
+    if(p.type === 'line') {
+      const prevSameLine = prev === ch && (ch === 'b' || ch === 'g');
+      const nextSameLine = next === ch && (ch === 'b' || ch === 'g');
+      const nextIsHard = next && (parts[next]?.type === 'hairpin' || parts[next]?.group === 'curveSmall');
+      if(!prevSameLine) return {cls:'boost', action:'Boost am Anfang', tag:'boost', tip: nextSameLine ? 'Lange Gerade beginnt hier. Früh boosten, danach halten.' : 'Kurzer Boost, nächsten Abschnitt vorbereiten.'};
+      if(nextIsHard && !nextSameLine) return {cls:'brake', action:'Bremspunkt vorbereiten', tag:'brake', tip:'Gerade endet vor harter Kurve. Boost rausnehmen.'};
+      return {cls:'flow', action:'Vollgas halten', tag:'flow', tip:'Boost nicht neu setzen. Linie halten.'};
+    }
+
+    if(p.group === 'curveSmall') return {cls:'lift', action:'Lupfen / stabilisieren', tag:'lift', tip:'Kleine 30°-Kurve: sauber setzen, nicht reißen.'};
+    if(p.group === 'curveLarge') return {cls:'flow', action:'Flüssig durchziehen', tag:'flow', tip:'Großer Radius. Möglichst wenig Lenk-Korrektur.'};
+    if(p.angle === 60){
+      if(prev && parts[prev]?.angle === 60 && next && parts[next]?.angle === 60){
+        return {cls:'flow', action:'Teilgas / Fluss', tag:'flow', tip:'Kurvenkette: gleichmäßig fahren, Drift vermeiden.'};
+      }
+      if(next && parts[next]?.angle) return {cls:'lift', action:'Lupfen / stabilisieren', tag:'lift', tip:'Auto setzen lassen, dann sanft öffnen.'};
+      return {cls:'flow', action:'Kurvenfluss', tag:'flow', tip:'Rund fahren, keine harten Korrekturen.'};
+    }
+    return {cls:'flow', action:'Fahrfluss', tag:'flow', tip:'Sauber halten.'};
+  }
+
+  function renderDrivingPlan(tokens){
+    const seq = reorderFromStartFinish(tokens);
+    const timeline = document.getElementById('driveTimeline');
+
+    timeline.innerHTML = seq.map((ch,i)=>{
+      const z = zoneForTile(seq,i);
+      const isImportant = z.tag === 'brake' || z.tag === 'boost' || z.tag === 'start';
+      return '<div class="zone '+z.cls+'">'+
+        '<div class="pos">#'+(i+1)+(isImportant ? ' · wichtig' : '')+'</div>'+ 
+        '<div class="part">'+ch+'</div>'+ 
+        '<div class="act">'+z.action+'</div>'+ 
+        '<div class="tip">'+z.tip+'</div>'+ 
+      '</div>';
+    }).join('');
+  }
+
+  function update(){
+    const input = document.getElementById('code');
+    input.value = input.value.trim().toLowerCase();
+    const parsed = parseCode(input.value);
+    if(!parsed.ok){ reset(parsed.error); return; }
+    const a = analyse(parsed.tokens);
+    renderDrivingPlan(parsed.tokens);
+    document.getElementById('status').innerHTML = '<span class="ok">OK</span>';
+    document.getElementById('statusSmall').textContent = a.modules+' Module · '+a.curves60+'× 60° · '+(a.curves30Large+a.curves30Small)+'× 30° · '+a.hairpins+'× Haarnadel · '+a.straightModules+'× Gerade/Start/Pit/Engstelle';
+    document.getElementById('modelLen').textContent = fmt(a.modelM,2)+' m';
+    document.getElementById('gameLen').textContent = fmt(a.gameM,0)+' m';
+
+    document.getElementById('carRows').innerHTML = cars.map(c=>{
+      const hybrid = a.theoretical150 * a.techMalus * c.factor;
+      return '<tr>'+ 
+        '<td><strong>'+c.name+'</strong></td>'+ 
+        '<td class="highlight">'+fmt(hybrid,3)+' s</td>'+ 
+        '<td>'+fmt(a.theoretical150,2)+' s</td>'+ 
+        '<td>×'+fmt(a.techMalus,2)+'</td>'+ 
+        '<td>×'+fmt(c.factor,3)+'</td>'+ 
+
+      '</tr>';
+    }).join('');
+
+    const carResults = cars.map(c=>({name:c.name, hybrid:a.theoretical150*a.techMalus*c.factor}));
+    const fastest = Math.min(...carResults.map(c=>c.hybrid));
+    const slowest = Math.max(...carResults.map(c=>c.hybrid));
+    document.getElementById('carBars').innerHTML = carResults.map(c=>{
+      const width = slowest > 0 ? Math.max(8, (c.hybrid/slowest)*100) : 0;
+      const isBest = Math.abs(c.hybrid-fastest) < 0.0001;
+      return '<div class="barrow">'+
+        '<div class="barlabel">'+c.name+'</div>'+
+        '<div class="bartrack"><div class="barfill '+(isBest?'best':'')+'" style="width:'+width+'%"></div></div>'+
+        '<div class="barvalue">'+fmt(c.hybrid,3)+' s</div>'+
+      '</div>';
+    }).join('');
+
+    const straightCount = a.straightModules;
+    const curveCount = a.curves60 + a.curves30Large + a.curves30Small;
+    const hairpinCount = a.hairpins;
+    const totalMix = Math.max(1, straightCount + curveCount + hairpinCount);
+    const straightPct = straightCount / totalMix * 100;
+    const curvePct = curveCount / totalMix * 100;
+    const hairpinPct = hairpinCount / totalMix * 100;
+    document.getElementById('mixBar').innerHTML =
+      '<div class="seg seg-straight" style="width:'+straightPct+'%">'+straightCount+'</div>'+ 
+      '<div class="seg seg-curve" style="width:'+curvePct+'%">'+curveCount+'</div>'+ 
+      '<div class="seg seg-hairpin" style="width:'+hairpinPct+'%">'+hairpinCount+'</div>';
+    document.getElementById('mixLegend').innerHTML =
+      '<span><i class="dot" style="background:#2563eb"></i>Geraden/Start/Pit/Engstelle '+pct(straightCount/totalMix,0)+'</span>'+ 
+      '<span><i class="dot" style="background:#f59e0b"></i>Kurven 30°/60° '+pct(curveCount/totalMix,0)+'</span>'+ 
+      '<span><i class="dot" style="background:#dc2626"></i>Haarnadeln '+pct(hairpinCount/totalMix,0)+'</span>';
+
+
+    const curveFactorPart = 0.015 * a.curves60;
+    const hairpinFactorPart = 0.10 * a.hairpins;
+    const straightFactorPart = -0.025 * (a.straights + a.start);
+    const rawTech = 1 + curveFactorPart + hairpinFactorPart + straightFactorPart;
+    const clampedNote = rawTech < 0.95 ? ' · auf Minimum 0,95 begrenzt' : '';
+    const curveSec = a.theoretical150 * curveFactorPart;
+    const hairpinSec = a.theoretical150 * hairpinFactorPart;
+    const straightSec = a.theoretical150 * straightFactorPart;
+    const techSec = a.theoretical150 * (a.techMalus - 1);
+
+    document.getElementById('impactRows').innerHTML = [
+      ['60°-Kurven', a.curves60+' Stück', '+'+fmt(curveFactorPart*100,1)+' %', '+'+fmt(curveSec,2)+' s'],
+      ['Haarnadeln', a.hairpins+' Stück', '+'+fmt(hairpinFactorPart*100,1)+' %', '+'+fmt(hairpinSec,2)+' s'],
+      ['Geraden/Start', (a.straights+a.start)+' Stück', fmt(straightFactorPart*100,1)+' %', fmt(straightSec,2)+' s'],
+      ['Gesamt-Technikindex', pct(a.curveRatio,1)+' Kurvenanteil', '×'+fmt(a.techMalus,2)+clampedNote, (techSec>=0?'+':'')+fmt(techSec,2)+' s']
+    ].map(r=>'<tr><td><strong>'+r[0]+'</strong></td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('');
+
+    const impactMax = Math.max(Math.abs(curveSec), Math.abs(hairpinSec), Math.abs(straightSec), 0.01);
+    document.getElementById('impactBars').innerHTML = [
+      ['60°-Kurven', curveSec, '+'],
+      ['Haarnadeln', hairpinSec, '+'],
+      ['Geraden/Start', straightSec, '']
+    ].map(row=>{
+      const label=row[0], sec=row[1];
+      const width=Math.max(3, Math.abs(sec)/impactMax*100);
+      return '<div class="impactbar">'+
+        '<div class="barlabel">'+label+'</div>'+
+        '<div class="bartrack"><div class="impactfill '+(sec<0?'neg':'')+'" style="width:'+width+'%"></div></div>'+
+        '<div class="barvalue">'+(sec>=0?'+':'')+fmt(sec,2)+' s</div>'+
+      '</div>';
+    }).join('') + '<div class="impactNote">Positive Werte machen die Prognose langsamer, negative Werte geben Zeit zurück.</div>';
+
+
+    document.getElementById('modulePills').innerHTML = [
+      ['Gesamt', a.modules], ['Start/Ziel', a.start], ['Geraden', a.straights], ['Pitlane', a.pit], ['Engstelle', a.narrow], ['60°-Kurven', a.curves60], ['30° groß', a.curves30Large], ['30° klein', a.curves30Small], ['Haarnadeln', a.hairpins]
+    ].map(x=>'<div class="pill"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>').join('');
+
+    const curveLenCm = Object.keys(a.byKey).reduce((sum,k)=> parts[k].type !== 'line' ? sum + a.byKey[k].lenCm : sum, 0);
+    const straightLenCm = a.lenCm - curveLenCm;
+    const detailRows = document.getElementById('detailRows');
+    if(detailRows){
+      detailRows.innerHTML = [
+        ['Carrera-Hybrid-Länge', fmt(a.modelM,2)+' m'],
+        ['Länge in Realität ×50', fmt(a.gameM,0)+' m'],
+        ['Gesamtlänge in cm', fmt(a.lenCm,1)+' cm'],
+        ['Länge Geraden/Start', fmt(straightLenCm/100,2)+' m'],
+        ['Länge Kurven/Haarnadeln', fmt(curveLenCm/100,2)+' m'],
+        ['Kurvenanteil nach Modulen', pct(a.curveRatio,1)],
+        ['Geradenanteil nach Modulen', pct(a.straightRatio,1)],
+        ['Theoretische 1:50-Basiszeit', fmt(a.theoretical150,2)+' s'],
+        ['Technikindex', '×'+fmt(a.techMalus,2)]
+      ].map(r=>'<tr><td>'+r[0]+'</td><td><strong>'+r[1]+'</strong></td></tr>').join('');
+    }
+
+    const order = ['a','b','g','j','c','d','h','i','k','l','e','f'];
+    document.getElementById('breakdownRows').innerHTML = order.filter(k=>a.byKey[k]).map(k=>{
+      const p=parts[k], d=a.byKey[k];
+      return '<tr>'+ 
+        '<td><strong>'+k+'</strong> · '+p.label+'</td>'+ 
+        '<td>'+d.count+'</td>'+ 
+        '<td>'+fmt(d.lenCm/100,2)+' m</td>'+ 
+        '<td>'+fmt((d.lenCm/100)*SCALE,1)+' m</td>'+ 
+      '</tr>';
+    }).join('');
+
+  }
+
+  const input = document.getElementById('code');
+  input.addEventListener('input', update);
+  input.addEventListener('change', update);
+  document.addEventListener('DOMContentLoaded', update);
+  update();
+})();
+</script>
+</body>
+</html>

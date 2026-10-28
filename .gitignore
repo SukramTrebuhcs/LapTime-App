@@ -1,0 +1,14 @@
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# Entwicklungsumgebungen
+.vscode/
+.idea/
+
+# Abhängigkeiten
+node_modules/
+
+# Umgebungsvariablen und Geheimnisse
+.env
+.env.*
